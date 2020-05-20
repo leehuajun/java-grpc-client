@@ -1,9 +1,6 @@
 package com.sunjet.rpc;
 
-import com.sunjet.rpc.api.Hello;
-import com.sunjet.rpc.api.HelloServiceGrpc;
-import com.sunjet.rpc.api.Product;
-import com.sunjet.rpc.api.ProductServiceGrpc;
+import com.sunjet.rpc.api.*;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NegotiationType;
@@ -65,6 +62,12 @@ public class Application {
         Product.ProductList productList = productStub.getProductList(querySize);
         productList.getProductListList().forEach(pr->
                 System.out.println(String.format("Code:%s, Name:%s",pr.getCode(),pr.getName())));
+
+        StudentServiceGrpc.StudentServiceBlockingStub studentStub = StudentServiceGrpc.newBlockingStub(channel);
+        Student.Class aClass = Student.Class.C1901;
+        Student.StudentRequest studentRequest = Student.StudentRequest.newBuilder().setClass_(aClass).build();
+        Student.StudentResponse studentResponse = studentStub.getStudentsByClass(studentRequest);
+        System.out.printf("Class: %s, Students: %d\n",aClass.name(),studentResponse.getStudents());
 
     }
 
