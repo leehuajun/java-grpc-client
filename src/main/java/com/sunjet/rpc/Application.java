@@ -2,6 +2,8 @@ package com.sunjet.rpc;
 
 import com.sunjet.rpc.api.Hello;
 import com.sunjet.rpc.api.HelloServiceGrpc;
+import com.sunjet.rpc.api.Product;
+import com.sunjet.rpc.api.ProductServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NegotiationType;
@@ -18,7 +20,6 @@ import java.io.FileNotFoundException;
 
 @SpringBootApplication
 public class Application {
-
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
         try {
@@ -43,19 +44,28 @@ public class Application {
         System.out.println(response.getMessage());
     }
     private static void testTls() throws SSLException, FileNotFoundException {
-        String path = ResourceUtils.getURL("classpath:").getPath();
-        System.out.println(path);
+        String path = ResourceUtils.getURL("classpath:").getPath() + "cert/";
         ManagedChannel channel = NettyChannelBuilder.forAddress("localhost", 8081)
                 .negotiationType(NegotiationType.TLS)
-                .overrideAuthority("localhost")
-                .sslContext(buildSslContext(path + "cert/ca.pem"
-                        , path + "cert/client.pem"
-                        , path + "cert/client.key"))
+                .sslContext(buildSslContext(path + "ca.pem"
+                        , path + "client.pem"
+                        , path + "client.pk8"))
                 .build();
+        HelloServiceGrpc.HelloServiceBlockingStub helloStub = HelloServiceGrpc.newBlockingStub(channel);
         Hello.HelloRequest request = Hello.HelloRequest.newBuilder().setName("LeeHuajun").build();
-        HelloServiceGrpc.HelloServiceBlockingStub stub = HelloServiceGrpc.newBlockingStub(channel);
-        Hello.HelloResponse response = stub.sayHello(request);
+        Hello.HelloResponse response = helloStub.sayHello(request);
         System.out.println(response.getMessage());
+
+        ProductServiceGrpc.ProductServiceBlockingStub productStub = ProductServiceGrpc.newBlockingStub(channel);
+        Product.ProductRequest productRequest = Product.ProductRequest.newBuilder().setId("1").build();
+        Product.ProductResponse productResponse = productStub.getProductById(productRequest);
+        System.out.println(String.format("Code:%s, Name:%s",productResponse.getCode(),productResponse.getName()));
+
+        Product.QuerySize querySize = Product.QuerySize.newBuilder().setSize(10).build();
+        Product.ProductList productList = productStub.getProductList(querySize);
+        productList.getProductListList().forEach(pr->
+                System.out.println(String.format("Code:%s, Name:%s",pr.getCode(),pr.getName())));
+
     }
 
     private static SslContext buildSslContext(String trustCertCollectionFilePath,
@@ -66,7 +76,7 @@ public class Application {
             builder.trustManager(new File(trustCertCollectionFilePath));
         }
         if (clientCertChainFilePath != null && clientPrivateKeyFilePath != null) {
-            builder.keyManager(new File(clientCertChainFilePath), new File(clientPrivateKeyFilePath));
+            builder.keyManager(new File(clientCertChainFilePath), new File(clientPrivateKeyFilePath),"1234");
         }
         return builder.build();
     }
